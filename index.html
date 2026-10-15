@@ -87,6 +87,13 @@
         <button class="btn ghost sm" id="dupPerson">Duplicate</button>
         <button class="btn ghost sm" id="delPerson">Remove</button>
       </div>
+      <div class="btnrow">
+        <button class="btn ghost sm" id="exportRoster">Export roster</button>
+        <button class="btn ghost sm" id="importRoster">Import roster</button>
+        <button class="btn ghost sm" id="resetRoster">Reset to team default</button>
+        <input type="file" id="rosterFile" accept="application/json,.json" style="display:none">
+      </div>
+      <p class="help mini">Export saves the whole team as a <code>roster.json</code> file. To update the shared default for everyone, send that file to Thor to drop into the repo.</p>
     </div>
 
     <div class="panel" style="margin-top:14px">
@@ -190,30 +197,52 @@
     instagram:"https://www.instagram.com/amplifybloomington/",
     purple:"#5c35d8",
     ampLabel:"Register for AMP Bloomington 2026",
-    ampUrl:""
+    ampUrl:"https://amplifybloomington.org/amp-bloomington"
   };
 
+  var TILDE="https://raw.githubusercontent.com/Thorsteinn4/amplify-email/main/tilde36px.png";
   var people=[
     {first:"Thor",last:"Sverrisson",title:"Head of Marketing",email:"thor@amplifybloomington.org",
-     phone1:"(812) 250-9714",phone2:"(574) 527-7722",
+     phone1:"(612) 999-5416",phone2:"(574) 527-7722",
      linkedin:"https://www.linkedin.com/in/thorsverrisson/",
-     photo:"https://amplifybloomington.org/wp-content/uploads/2026/04/elitest.png",
-     divider:"tilde",tildeUrl:"https://amplifybloomington.org/wp-content/uploads/2026/02/Purple-Tilde@0.5x.png",
-     ampOn:true,bookLabel:"",bookUrl:""},
-    {first:"Tori",last:"Stodghill",title:"Community & Network Coordinator",email:"tori@amplifybloomington.org",
+     photo:"https://raw.githubusercontent.com/Thorsteinn4/amplify-email/main/Thor.png",
+     divider:"tilde",tildeUrl:TILDE,ampOn:true,bookLabel:"",bookUrl:""},
+    {first:"Tori",last:"Stodghill",title:"Community Experience Coordinator",email:"tori@amplifybloomington.org",
      phone1:"(812) 250-9714",phone2:"",
      linkedin:"https://www.linkedin.com/in/victoria-stodghill-7a12b2b0/",
-     photo:"",divider:"line",tildeUrl:"",
-     ampOn:true,bookLabel:"Book a Meeting",bookUrl:"https://calendar.app.google/mHmcoMsr1LCdsGxy8"}
+     photo:"https://raw.githubusercontent.com/Thorsteinn4/amplify-email/main/Victoria.png",
+     divider:"tilde",tildeUrl:TILDE,ampOn:true,bookLabel:"",bookUrl:""},
+    {first:"Jerrell",last:"Stephens",title:"Facilities Manager",email:"jerrell@amplifybloomington.org",
+     phone1:"(812) 369-8824",phone2:"(812) 250-9714",
+     linkedin:"https://www.linkedin.com/company/18679926/",
+     photo:"https://raw.githubusercontent.com/Thorsteinn4/amplify-email/main/jerrell.png",
+     divider:"tilde",tildeUrl:TILDE,ampOn:true,bookLabel:"",bookUrl:""},
+    {first:"John",last:"Fernandez",title:"CEO",email:"john@amplifybloomington.org",
+     phone1:"(202) 420-8594",phone2:"(812) 250-9714",
+     linkedin:"https://www.linkedin.com/in/johnfernandez1/",
+     photo:"https://raw.githubusercontent.com/Thorsteinn4/amplify-email/main/JohnFernandez.png",
+     divider:"tilde",tildeUrl:TILDE,ampOn:true,bookLabel:"",bookUrl:""},
+    {first:"Victoria",last:"Crawley",title:"Chief of Staff",email:"victoria@amplifybloomington.org",
+     phone1:"(812) 278-4970",phone2:"(812) 250-9714",
+     linkedin:"https://www.linkedin.com/in/victoria-crawley/",
+     photo:"https://raw.githubusercontent.com/Thorsteinn4/amplify-email/main/victoriacrawley.png",
+     divider:"tilde",tildeUrl:TILDE,ampOn:true,bookLabel:"",bookUrl:""},
+    {first:"Tobey",last:"Wyatt",title:"Head of Entrepreneurship Growth",email:"tobey@amplifybloomington.org",
+     phone1:"(812) 278-4970",phone2:"(812) 250-9714",
+     linkedin:"https://www.linkedin.com/in/tobeywyatt/",
+     photo:"https://raw.githubusercontent.com/Thorsteinn4/amplify-email/main/tobey.png",
+     divider:"tilde",tildeUrl:TILDE,ampOn:true,bookLabel:"",bookUrl:""}
   ];
   var sel=0;
+  var ROSTER_VERSION=2;
+  var STORAGE_KEY="ab_sig_roster_v"+ROSTER_VERSION;
 
   // ---- persistence (guarded) ----
   try{
-    var saved=localStorage.getItem("ab_sig_state_v1");
+    var saved=localStorage.getItem(STORAGE_KEY);
     if(saved){ var s=JSON.parse(saved); if(s&&s.people&&s.people.length){ people=s.people; globals=Object.assign(globals,s.globals||{}); sel=Math.min(s.sel||0, people.length-1);} }
   }catch(e){}
-  function save(){ try{ localStorage.setItem("ab_sig_state_v1", JSON.stringify({people:people,globals:globals,sel:sel})); }catch(e){} }
+  function save(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({people:people,globals:globals,sel:sel})); }catch(e){} }
 
   function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
   function tel(s){ var d=String(s||"").replace(/[^0-9]/g,""); if(d.length===10) d="1"+d; return "tel:+"+d; }
@@ -409,6 +438,38 @@
   $("delPerson").addEventListener("click",function(){
     if(people.length<=1) return;
     people.splice(sel,1); sel=Math.max(0,sel-1); renderPills(); loadForm(); render(); save();
+  });
+
+  $("exportRoster").addEventListener("click",function(){
+    var data=JSON.stringify({version:ROSTER_VERSION,globals:globals,people:people},null,2);
+    var blob=new Blob([data],{type:"application/json"});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement("a"); a.href=url; a.download="roster.json";
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); },100);
+    toast("Roster exported as roster.json");
+  });
+  $("importRoster").addEventListener("click",function(){ $("rosterFile").click(); });
+  $("rosterFile").addEventListener("change",function(){
+    var f=this.files&&this.files[0]; var self=this;
+    if(!f){ return; }
+    var r=new FileReader();
+    r.onload=function(){
+      try{
+        var d=JSON.parse(r.result);
+        if(d&&d.people&&d.people.length){
+          people=d.people; if(d.globals) globals=Object.assign(globals,d.globals);
+          sel=0; renderPills(); loadForm(); render(); save();
+          toast("Roster imported ("+people.length+")");
+        } else { toast("That file didn't contain a roster"); }
+      }catch(e){ toast("Couldn't read that file"); }
+      self.value="";
+    };
+    r.readAsText(f);
+  });
+  $("resetRoster").addEventListener("click",function(){
+    try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+    location.reload();
   });
 
   function toast(msg){ var t=$("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(function(){t.classList.remove("show");},1600); }
