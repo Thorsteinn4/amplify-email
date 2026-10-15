@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Amplify Bloomington — Signature Generator</title>
+<style>
+  :root{
+    --bg:#f4f3f7; --card:#ffffff; --ink:#2a2d28; --muted:#6b6f68;
+    --line:#e3e1ea; --purple:#5c35d8; --purple-ink:#4322a8; --green:#3E4A3A;
+    --warn-bg:#fff4e5; --warn-ink:#8a5a00; --warn-line:#ffd79a;
+    --field:#ffffff; --field-line:#d6d3df;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#17161b; --card:#201f26; --ink:#eceaf2; --muted:#a6a2b4;
+      --line:#302e39; --field:#17161b; --field-line:#3a3745;
+      --warn-bg:#2e2410; --warn-ink:#f0c777; --warn-line:#5a4720;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--ink);
+    padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+    line-height:1.45;
+  }
+  header{
+    padding:20px 22px 14px; border-bottom:1px solid var(--line); background:var(--card);
+  }
+  header h1{font-size:18px; margin:0 0 3px; letter-spacing:-.01em}
+  header p{margin:0; color:var(--muted); font-size:13px; max-width:70ch}
+  .tilde{color:var(--purple); font-weight:800}
+  .wrap{display:grid; grid-template-columns:minmax(0,420px) minmax(0,1fr); gap:20px; padding:20px; align-items:start}
+  @media (max-width:860px){ .wrap{grid-template-columns:1fr} }
+  .panel{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px}
+  .panel h2{font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:0 0 12px}
+  label{display:block; font-size:12px; color:var(--muted); margin:10px 0 4px}
+  input[type=text],input[type=url],input[type=email],select,textarea{
+    width:100%; background:var(--field); color:var(--ink);
+    border:1px solid var(--field-line); border-radius:8px; padding:8px 10px; font-size:13px; font-family:inherit;
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--purple); outline-offset:1px; border-color:var(--purple)}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .inline{display:flex; align-items:center; gap:8px}
+  .inline input[type=checkbox]{width:16px;height:16px;accent-color:var(--purple)}
+  .pills{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px}
+  .pill{border:1px solid var(--field-line); background:var(--field); color:var(--ink); border-radius:999px; padding:6px 12px; font-size:12px; cursor:pointer}
+  .pill.active{background:var(--purple); color:#fff; border-color:var(--purple)}
+  .btn{border:0; border-radius:8px; padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit}
+  .btn.primary{background:var(--purple); color:#fff}
+  .btn.ghost{background:transparent; color:var(--ink); border:1px solid var(--field-line)}
+  .btn.sm{padding:6px 10px; font-size:12px}
+  .btnrow{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px}
+  .warn{background:var(--warn-bg); color:var(--warn-ink); border:1px solid var(--warn-line); border-radius:8px; padding:9px 11px; font-size:12px; margin-top:10px; display:none}
+  .warn.show{display:block}
+  .preview-shell{position:sticky; top:14px}
+  .preview{background:#ffffff; border:1px solid var(--line); border-radius:12px; padding:26px; overflow:auto}
+  .preview .cap{font-size:11px; color:#8a8f88; text-transform:uppercase; letter-spacing:.08em; margin-bottom:14px}
+  details{margin-top:14px}
+  summary{cursor:pointer; font-size:12px; color:var(--muted)}
+  textarea.code{height:180px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; white-space:pre; margin-top:8px}
+  .help{font-size:12px; color:var(--muted); margin:4px 0 0}
+  .divider-opts{display:flex; gap:14px; margin-top:4px}
+  .sep{height:1px; background:var(--line); border:0; margin:16px 0}
+  .toast{position:fixed; left:50%; bottom:22px; transform:translateX(-50%); background:var(--green); color:#fff; padding:10px 16px; border-radius:999px; font-size:13px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:50}
+  .toast.show{opacity:1}
+  .mini{font-size:11px; color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Amplify Bloomington <span class="tilde">~</span> Signature Generator</h1>
+  <p>Enter each teammate once. You get clean, table-based HTML that renders the same in Gmail, Apple Mail, and Outlook — no WordPress, no WEBP. Copy the signature, paste it into Gmail settings, done.</p>
+</header>
+
+<div class="wrap">
+  <!-- FORM -->
+  <div>
+    <div class="panel">
+      <h2>Team</h2>
+      <div class="pills" id="pills"></div>
+      <div class="btnrow">
+        <button class="btn ghost sm" id="addPerson">+ Add teammate</button>
+        <button class="btn ghost sm" id="dupPerson">Duplicate</button>
+        <button class="btn ghost sm" id="delPerson">Remove</button>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <h2>This person</h2>
+      <div class="row2">
+        <div><label>First name</label><input id="first" type="text"></div>
+        <div><label>Last name</label><input id="last" type="text"></div>
+      </div>
+      <label>Title</label><input id="title" type="text">
+      <label>Email</label><input id="email" type="email">
+      <div class="row2">
+        <div><label>Phone 1</label><input id="phone1" type="text" placeholder="(812) 555-0000"></div>
+        <div><label>Phone 2 (optional)</label><input id="phone2" type="text"></div>
+      </div>
+      <label>LinkedIn URL</label><input id="linkedin" type="url">
+      <label>Headshot image URL (optional)</label><input id="photo" type="url" placeholder="https://…">
+      <p class="help">Leave blank for no photo. Use a square image, ~240×240px. Host it somewhere that serves PNG/JPEG unchanged (see note on the right).</p>
+      <div class="warn" id="photoWarn"></div>
+
+      <label>Divider</label>
+      <div class="divider-opts">
+        <label class="inline" style="margin:0"><input type="radio" name="divider" value="line"> Purple line</label>
+        <label class="inline" style="margin:0"><input type="radio" name="divider" value="tilde"> Tilde mark</label>
+      </div>
+      <div id="tildeWrap" style="display:none">
+        <label>Tilde image URL</label><input id="tildeUrl" type="url">
+        <div class="warn" id="tildeWarn"></div>
+      </div>
+
+      <hr class="sep">
+      <label class="inline"><input type="checkbox" id="ampOn"> Show the AMP Bloomington 2026 button</label>
+      <p class="help mini">Toggle off for anyone who shouldn't carry the campaign CTA. Label and link are set under Shared settings.</p>
+
+      <label style="margin-top:12px">Personal button — label (optional)</label><input id="bookLabel" type="text" placeholder="e.g. Book a Meeting">
+      <label>Personal button — link</label><input id="bookUrl" type="url">
+      <p class="help mini">A second, personal CTA (like a booking link). Leave blank to skip.</p>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <h2>Shared settings (apply to everyone)</h2>
+      <label>Organization — line 1</label><input id="org1" type="text">
+      <label>Organization — line 2</label><input id="org2" type="text">
+      <label>Website URL</label><input id="website" type="url">
+      <label>Address</label><input id="address" type="text">
+      <label>Instagram URL</label><input id="instagram" type="url">
+      <label>Brand purple (hex)</label><input id="purple" type="text" placeholder="#5c35d8">
+      <p class="help mini">Sets the icons, divider line, and button fill for every signature.</p>
+      <hr class="sep">
+      <label>AMP button — label</label><input id="ampLabel" type="text">
+      <label>AMP button — registration URL</label><input id="ampUrl" type="url" placeholder="Paste the AMP Bloomington 2026 landing page URL">
+      <div class="warn" id="ampWarn"></div>
+    </div>
+  </div>
+
+  <!-- PREVIEW -->
+  <div class="preview-shell">
+    <div class="panel">
+      <h2>Preview &amp; copy</h2>
+      <div class="preview">
+        <div class="cap">How it renders</div>
+        <div id="sigPreview"></div>
+      </div>
+      <div class="warn" id="imgStatus"></div>
+      <div class="btnrow">
+        <button class="btn primary" id="copySig">Copy signature → paste into Gmail</button>
+        <button class="btn ghost" id="copyHtml">Copy HTML source</button>
+        <button class="btn ghost" id="copyAll">Copy all as HTML files list</button>
+      </div>
+      <p class="help">In Gmail: Settings → See all settings → General → Signature → create/select the signature → click into the box → paste. (Ctrl/⌘-V.)</p>
+      <details>
+        <summary>Show HTML source for this person</summary>
+        <textarea class="code" id="codeBox" readonly></textarea>
+      </details>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <h2>Why this is bulletproof</h2>
+      <p class="help" style="font-size:12.5px; line-height:1.5">
+        • Layout is tables with inline styles — the only thing email clients render reliably.<br>
+        • The button is real HTML (a colored, padded link), not an image, so it never breaks or blurs.<br>
+        • Dividers can be pure CSS, so there's one less image to host.<br>
+        • Photos must be images. Host them where the file is served <b>exactly as uploaded</b>. WordPress re-encodes uploads to WEBP, which Outlook can't display and Gmail renders poorly. Any headshot on <code>/wp-content/</code> will trip the warning above — move those to a clean host (a non-WordPress folder/subdomain, or a free Cloudinary account) and paste the new URL.
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+  var ICON="https://cdn2.hubspot.net/hubfs/53/tools/email-signature-generator/icons/";
+  var PURPLE="#5c35d8", GREEN="#3E4A3A";
+
+  var globals={
+    org1:"Amplify Bloomington",
+    org2:"(formerly Dimension Mill Inc.)",
+    website:"https://amplifybloomington.org",
+    address:"642 N Madison St, Bloomington, IN 47404",
+    instagram:"https://www.instagram.com/amplifybloomington/",
+    purple:"#5c35d8",
+    ampLabel:"Register for AMP Bloomington 2026",
+    ampUrl:""
+  };
+
+  var people=[
+    {first:"Thor",last:"Sverrisson",title:"Head of Marketing",email:"thor@amplifybloomington.org",
+     phone1:"(812) 250-9714",phone2:"(574) 527-7722",
+     linkedin:"https://www.linkedin.com/in/thorsverrisson/",
+     photo:"https://amplifybloomington.org/wp-content/uploads/2026/04/elitest.png",
+     divider:"tilde",tildeUrl:"https://amplifybloomington.org/wp-content/uploads/2026/02/Purple-Tilde@0.5x.png",
+     ampOn:true,bookLabel:"",bookUrl:""},
+    {first:"Tori",last:"Stodghill",title:"Community & Network Coordinator",email:"tori@amplifybloomington.org",
+     phone1:"(812) 250-9714",phone2:"",
+     linkedin:"https://www.linkedin.com/in/victoria-stodghill-7a12b2b0/",
+     photo:"",divider:"line",tildeUrl:"",
+     ampOn:true,bookLabel:"Book a Meeting",bookUrl:"https://calendar.app.google/mHmcoMsr1LCdsGxy8"}
+  ];
+  var sel=0;
+
+  // ---- persistence (guarded) ----
+  try{
+    var saved=localStorage.getItem("ab_sig_state_v1");
+    if(saved){ var s=JSON.parse(saved); if(s&&s.people&&s.people.length){ people=s.people; globals=Object.assign(globals,s.globals||{}); sel=Math.min(s.sel||0, people.length-1);} }
+  }catch(e){}
+  function save(){ try{ localStorage.setItem("ab_sig_state_v1", JSON.stringify({people:people,globals:globals,sel:sel})); }catch(e){} }
+
+  function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+  function tel(s){ var d=String(s||"").replace(/[^0-9]/g,""); if(d.length===10) d="1"+d; return "tel:+"+d; }
+  function httpsify(u){ u=String(u||"").trim(); if(!u) return u; if(u.indexOf("//")===0) return "https:"+u; return u.replace(/^http:\/\//i,"https://"); }
+
+  function spacer(h){ return '<tr><td height="'+h+'" style="font-size:0;line-height:0;" aria-label="spacer"></td></tr>'; }
+
+  function socialBlock(p){
+    var li='<a href="'+esc(p.linkedin||"#")+'" style="display:inline-block;padding:0;background-color:'+PURPLE+';border-radius:50%;"><img src="'+ICON+'linkedin-icon-dark-2x.png" alt="LinkedIn" width="24" style="background-color:'+PURPLE+';display:block;border-radius:50%;border:0;"></a>';
+    var ig='<a href="'+esc(httpsify(globals.instagram)||"#")+'" style="display:inline-block;padding:0;background-color:'+PURPLE+';border-radius:50%;"><img src="'+ICON+'instagram-icon-dark-2x.png" alt="Instagram" width="24" style="background-color:'+PURPLE+';display:block;border-radius:50%;border:0;"></a>';
+    return '<table cellpadding="0" cellspacing="0" border="0" align="center" style="font-family:Verdana,Geneva,sans-serif;margin:0 auto;"><tr><td style="text-align:center;">'+li+'<span style="display:inline-block;width:5px;"></span>'+ig+'</td></tr></table>';
+  }
+
+  function leftColumn(p){
+    var rows="";
+    if(p.photo){
+      rows+='<tr><td style="text-align:center;"><img src="'+esc(httpsify(p.photo))+'" alt="'+esc(p.first+" "+p.last)+'" width="120" style="display:block;width:120px;max-width:120px;height:auto;border:0;-ms-interpolation-mode:bicubic;margin:0 auto;"></td></tr>';
+      rows+=spacer(18);
+    }
+    rows+='<tr><td style="text-align:center;">'+socialBlock(p)+'</td></tr>';
+    return '<table cellpadding="0" cellspacing="0" border="0" style="font-family:Verdana,Geneva,sans-serif;">'+rows+'</table>';
+  }
+
+  function dividerBlock(p){
+    if(p.divider==="tilde" && p.tildeUrl){
+      return '<table cellpadding="0" cellspacing="0" border="0" style="font-family:Verdana,Geneva,sans-serif;width:100%;">'
+        +spacer(22)
+        +'<tr><td align="left" style="text-align:left;padding:0;"><img src="'+esc(httpsify(p.tildeUrl))+'" alt="~" width="30" style="display:block;width:30px;max-width:30px;height:auto;border:0;-ms-interpolation-mode:bicubic;"></td></tr>'
+        +spacer(22)+'</table>';
+    }
+    return '<table cellpadding="0" cellspacing="0" border="0" style="font-family:Verdana,Geneva,sans-serif;width:100%;">'
+      +spacer(20)
+      +'<tr><td style="font-size:0;line-height:0;border-bottom:1px solid '+PURPLE+';">&nbsp;</td></tr>'
+      +spacer(20)+'</table>';
+  }
+
+  function contactRow(iconFile,contentHtml){
+    return '<tr style="height:28px;"><td width="26" style="vertical-align:middle;"><span style="display:inline-block;background-color:'+PURPLE+';"><img src="'+ICON+iconFile+'" alt="" width="18" style="display:block;border:0;"></span></td>'
+      +'<td style="padding:0;color:'+GREEN+';font-size:14px;line-height:22px;">'+contentHtml+'</td></tr>';
+  }
+
+  function contactBlock(p){
+    var phone="";
+    if(p.phone1){ phone='<a href="'+tel(p.phone1)+'" style="text-decoration:none;color:'+GREEN+';font-size:14px;">'+esc(p.phone1)+'</a>'; }
+    if(p.phone2){ phone+=' | <a href="'+tel(p.phone2)+'" style="text-decoration:none;color:'+GREEN+';font-size:14px;">'+esc(p.phone2)+'</a>'; }
+    var rows="";
+    if(phone) rows+=contactRow("phone-icon-dark-2x.png",phone);
+    if(p.email) rows+=contactRow("email-icon-dark-2x.png",'<a href="mailto:'+esc(p.email)+'" style="text-decoration:none;color:'+GREEN+';font-size:14px;">'+esc(p.email)+'</a>');
+    if(globals.website){ var w=httpsify(globals.website); rows+=contactRow("link-icon-dark-2x.png",'<a href="'+esc(w)+'" style="text-decoration:none;color:'+GREEN+';font-size:14px;">'+esc(w.replace(/^https?:\/\//,""))+'</a>'); }
+    if(globals.address) rows+=contactRow("address-icon-dark-2x.png",'<span style="font-size:14px;color:'+GREEN+';">'+esc(globals.address)+'</span>');
+    return '<table cellpadding="0" cellspacing="0" border="0" style="font-family:Verdana,Geneva,sans-serif;line-height:1;">'+rows+'</table>';
+  }
+
+  function button(label,url,fill){
+    var u=esc(url||"#");
+    return '<a href="'+u+'" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">'
+      +'<span style="border-style:solid;border-color:'+fill+';border-width:10px 16px;background-color:'+fill+';color:#ffffff;font-weight:700;font-size:13px;line-height:16px;text-decoration:none;border-radius:4px;display:inline-block;font-family:Verdana,Geneva,sans-serif;">'+esc(label)+'</span></a>';
+  }
+
+  function buttonsBlock(p){
+    var btns=[];
+    if(p.ampOn && globals.ampLabel) btns.push(button(globals.ampLabel, globals.ampUrl||"#", PURPLE));
+    if(p.bookLabel && p.bookUrl) btns.push(button(p.bookLabel, p.bookUrl, GREEN));
+    if(!btns.length) return "";
+    var rows=spacer(24);
+    for(var i=0;i<btns.length;i++){
+      rows+='<tr><td style="padding:0;">'+btns[i]+'</td></tr>';
+      if(i<btns.length-1) rows+=spacer(10);
+    }
+    return '<table cellpadding="0" cellspacing="0" border="0" style="font-family:Verdana,Geneva,sans-serif;">'+rows+'</table>';
+  }
+
+  function rightColumn(p){
+    var html='<h2 style="margin:0;font-size:18px;font-family:Verdana,Geneva,sans-serif;color:'+GREEN+';font-weight:600;line-height:28px;">'+esc(p.first)+'&nbsp;'+esc(p.last)+'</h2>';
+    if(p.title) html+='<p style="margin:0;color:'+GREEN+';font-size:14px;line-height:22px;">'+esc(p.title)+'</p>';
+    if(globals.org1) html+='<div style="margin:0;font-weight:500;color:'+GREEN+';font-size:14px;line-height:22px;">'+esc(globals.org1)+'</div>';
+    if(globals.org2) html+='<p style="margin:0;color:'+GREEN+';font-size:14px;line-height:22px;">'+esc(globals.org2)+'</p>';
+    html+=dividerBlock(p);
+    html+=contactBlock(p);
+    html+=buttonsBlock(p);
+    return html;
+  }
+
+  function buildSig(p){
+    PURPLE=globals.purple||"#5c35d8";
+    return '<table cellpadding="0" cellspacing="0" border="0" style="font-family:Verdana,Geneva,sans-serif;color:'+GREEN+';">'
+      +'<tr>'
+      +'<td style="vertical-align:top;">'+leftColumn(p)+'</td>'
+      +'<td width="40" aria-label="spacer"><div style="width:40px;"></div></td>'
+      +'<td style="padding:0;vertical-align:middle;">'+rightColumn(p)+'</td>'
+      +'</tr></table>';
+  }
+
+  // ---- UI wiring ----
+  var $=function(id){return document.getElementById(id);};
+  function cur(){return people[sel];}
+
+  function renderPills(){
+    var h="";
+    for(var i=0;i<people.length;i++){
+      var nm=(people[i].first||"?")+" "+(people[i].last||"");
+      h+='<button class="pill'+(i===sel?' active':'')+'" data-i="'+i+'">'+esc(nm.trim())+'</button>';
+    }
+    $("pills").innerHTML=h;
+    var btns=$("pills").querySelectorAll(".pill");
+    for(var j=0;j<btns.length;j++){ btns[j].addEventListener("click",function(){ sel=+this.getAttribute("data-i"); loadForm(); render(); save(); }); }
+  }
+
+  function wpWarn(url){ return url && /\/wp-content\//i.test(url); }
+
+  function loadForm(){
+    var p=cur();
+    $("first").value=p.first||""; $("last").value=p.last||"";
+    $("title").value=p.title||""; $("email").value=p.email||"";
+    $("phone1").value=p.phone1||""; $("phone2").value=p.phone2||"";
+    $("linkedin").value=p.linkedin||""; $("photo").value=p.photo||"";
+    $("tildeUrl").value=p.tildeUrl||"";
+    $("bookLabel").value=p.bookLabel||""; $("bookUrl").value=p.bookUrl||"";
+    $("ampOn").checked=!!p.ampOn;
+    var rads=document.getElementsByName("divider");
+    for(var i=0;i<rads.length;i++){ rads[i].checked=(rads[i].value===(p.divider||"line")); }
+    $("tildeWrap").style.display=(p.divider==="tilde")?"block":"none";
+    // globals
+    $("org1").value=globals.org1; $("org2").value=globals.org2;
+    $("website").value=globals.website; $("address").value=globals.address;
+    $("instagram").value=globals.instagram; $("ampLabel").value=globals.ampLabel; $("ampUrl").value=globals.ampUrl;
+    $("purple").value=globals.purple||"#5c35d8";
+    updateWarnings();
+  }
+
+  function updateWarnings(){
+    var p=cur();
+    var pw=$("photoWarn");
+    if(wpWarn(p.photo)){ pw.textContent="⚠ This headshot is on WordPress (/wp-content/). It will be served as WEBP and look broken in Outlook / poor in Gmail. Re-host it and paste the new URL."; pw.classList.add("show"); }
+    else pw.classList.remove("show");
+    var tw=$("tildeWarn");
+    if(p.divider==="tilde" && wpWarn(p.tildeUrl)){ tw.textContent="⚠ The tilde image is on WordPress too. Re-host it, or switch the divider to the Purple line (no image needed)."; tw.classList.add("show"); }
+    else tw.classList.remove("show");
+    var aw=$("ampWarn");
+    if($("ampOn").checked && !globals.ampUrl){ aw.textContent="⚠ No registration URL set — the AMP button links nowhere. Add it above."; aw.classList.add("show"); }
+    else aw.classList.remove("show");
+  }
+
+  function render(){
+    var html=buildSig(cur());
+    $("sigPreview").innerHTML=html;
+    $("codeBox").value=html;
+    checkImages();
+  }
+
+  function checkImages(){
+    var status=$("imgStatus"); if(!status) return;
+    status.classList.remove("show"); status.textContent="";
+    var p=cur(); var watch=[];
+    if(p.photo) watch.push(httpsify(p.photo));
+    if(p.divider==="tilde" && p.tildeUrl) watch.push(httpsify(p.tildeUrl));
+    if(!watch.length) return;
+    function fail(){
+      status.textContent='\u26A0 An image didn\u2019t load. Use the direct image link \u2014 the GitHub \u201CRaw\u201D URL (raw.githubusercontent.com/\u2026) or your Pages URL (username.github.io/\u2026), ending in .png or .jpg \u2014 not the github.com page for the file. If you just turned on Pages, give it a minute, then re-edit the field to refresh. (Note: a blank preview with the tool opened from the published link is the sandbox blocking images, not a bad URL \u2014 open the downloaded file in your browser instead.)';
+      status.classList.add("show");
+    }
+    var imgs=$("sigPreview").querySelectorAll("img");
+    for(var i=0;i<imgs.length;i++){
+      (function(img){
+        var src=img.getAttribute("src");
+        if(watch.indexOf(src)===-1) return;
+        img.addEventListener("error",fail);
+        if(img.complete && img.naturalWidth===0) fail();
+      })(imgs[i]);
+    }
+    setTimeout(function(){
+      var im=$("sigPreview").querySelectorAll("img");
+      for(var i=0;i<im.length;i++){ var s=im[i].getAttribute("src"); if(watch.indexOf(s)>-1 && im[i].complete && im[i].naturalWidth===0){ fail(); return; } }
+    },1500);
+  }
+
+  function bindPerson(id,key){ $(id).addEventListener("input",function(){ cur()[key]=this.value; renderPills(); render(); updateWarnings(); save(); }); }
+  ["first","last","title","email","phone1","phone2","linkedin","photo","tildeUrl","bookLabel","bookUrl"].forEach(function(k){ bindPerson(k,k); });
+  $("ampOn").addEventListener("change",function(){ cur().ampOn=this.checked; render(); updateWarnings(); save(); });
+  var rads=document.getElementsByName("divider");
+  for(var i=0;i<rads.length;i++){ rads[i].addEventListener("change",function(){ cur().divider=this.value; $("tildeWrap").style.display=(this.value==="tilde")?"block":"none"; render(); updateWarnings(); save(); }); }
+
+  function bindGlobal(id,key){ $(id).addEventListener("input",function(){ globals[key]=this.value; render(); updateWarnings(); save(); }); }
+  ["org1","org2","website","address","instagram","purple","ampLabel","ampUrl"].forEach(function(k){ bindGlobal(k,k); });
+
+  $("addPerson").addEventListener("click",function(){
+    people.push({first:"New",last:"Teammate",title:"",email:"",phone1:"",phone2:"",linkedin:"",photo:"",divider:"line",tildeUrl:"",ampOn:true,bookLabel:"",bookUrl:""});
+    sel=people.length-1; renderPills(); loadForm(); render(); save();
+  });
+  $("dupPerson").addEventListener("click",function(){
+    var c=JSON.parse(JSON.stringify(cur())); c.first=c.first+" copy"; people.splice(sel+1,0,c); sel=sel+1; renderPills(); loadForm(); render(); save();
+  });
+  $("delPerson").addEventListener("click",function(){
+    if(people.length<=1) return;
+    people.splice(sel,1); sel=Math.max(0,sel-1); renderPills(); loadForm(); render(); save();
+  });
+
+  function toast(msg){ var t=$("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(function(){t.classList.remove("show");},1600); }
+
+  $("copyHtml").addEventListener("click",function(){
+    navigator.clipboard.writeText(buildSig(cur())).then(function(){toast("HTML source copied");},function(){toast("Copy failed — use the source box");});
+  });
+
+  $("copySig").addEventListener("click",function(){
+    var html=buildSig(cur());
+    function fallback(){
+      var r=document.createRange(); r.selectNodeContents($("sigPreview"));
+      var s=window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      try{ document.execCommand("copy"); toast("Signature copied — paste into Gmail"); }
+      catch(e){ toast("Press Ctrl/⌘-C to copy the selected signature"); }
+    }
+    if(window.ClipboardItem && navigator.clipboard && navigator.clipboard.write){
+      try{
+        var item=new ClipboardItem({
+          "text/html": new Blob([html],{type:"text/html"}),
+          "text/plain": new Blob([html],{type:"text/plain"})
+        });
+        navigator.clipboard.write([item]).then(function(){toast("Signature copied — paste into Gmail");},fallback);
+      }catch(e){ fallback(); }
+    } else { fallback(); }
+  });
+
+  $("copyAll").addEventListener("click",function(){
+    var out="";
+    for(var i=0;i<people.length;i++){ out+="=== "+people[i].first+" "+people[i].last+" ===\n"+buildSig(people[i])+"\n\n"; }
+    navigator.clipboard.writeText(out).then(function(){toast("All "+people.length+" signatures copied as source");},function(){toast("Copy failed");});
+  });
+
+  renderPills(); loadForm(); render();
+})();
+</script>
+</body>
+</html>
